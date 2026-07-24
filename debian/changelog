@@ -1,0 +1,11 @@
+pve-console-wall (1.0.0) stable; urgency=medium
+
+  * Initial release.
+  * Datacenter -> Console Wall multi-console grid dashboard.
+  * Live noVNC consoles with auto-reconnect and health-coloured borders.
+  * CPU/RAM/network overlays, VM search and node/tag filtering.
+  * Interactive and read-only modes; per-guest quick actions.
+  * Saved layouts (server-side, per user) and auto-rotation.
+  * APT hook to re-apply the UI injection after pve-manager upgrades.
+
+ -- Console Wall Plugin <noreply@example.com>  Fri, 24 Jul 2026 00:00:00 +0000

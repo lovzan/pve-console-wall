@@ -1,0 +1,19 @@
+#!/bin/sh
+# prerm for pve-console-wall
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        if [ -x /var/lib/pve-console-wall/scripts/uninstall.sh ]; then
+            /var/lib/pve-console-wall/scripts/uninstall.sh || \
+                echo "pve-console-wall: uninstall step reported an error" >&2
+        fi
+        ;;
+    upgrade)
+        # On upgrade, the new postinst re-applies; nothing to undo here.
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

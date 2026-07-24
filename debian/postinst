@@ -1,0 +1,19 @@
+#!/bin/sh
+# postinst for pve-console-wall
+set -e
+
+case "$1" in
+    configure)
+        if [ -x /var/lib/pve-console-wall/scripts/install.sh ]; then
+            SRC=/var/lib/pve-console-wall/src \
+                /var/lib/pve-console-wall/scripts/install.sh || \
+                echo "pve-console-wall: install step reported an error" >&2
+        fi
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

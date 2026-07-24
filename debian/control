@@ -1,0 +1,24 @@
+Source: pve-console-wall
+Section: admin
+Priority: optional
+Maintainer: Console Wall Plugin <noreply@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://example.com/pve-console-wall
+
+Package: pve-console-wall
+Architecture: all
+Depends: ${misc:Depends},
+         pve-manager,
+         libpve-common-perl,
+         libpve-cluster-perl,
+         perl
+Description: Console Wall dashboard for Proxmox VE
+ Adds a Console Wall view under Datacenter that displays many live noVNC
+ guest consoles in a configurable grid (2x2, 3x3, 4x4, custom or auto).
+ .
+ Features live CPU/RAM/network overlays, health-coloured borders, VM search
+ and filtering by node and tag, interactive or read-only mode, per-guest
+ quick actions (start, stop, reset, shutdown, snapshot), full-screen console,
+ saved layouts and auto-rotation. All authentication, ACLs and console
+ streaming reuse the native Proxmox VE APIs.

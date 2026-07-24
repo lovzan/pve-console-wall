@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# Nothing to compile; we ship source + scripts and wire everything up in the
+# maintainer scripts (postinst/prerm) which invoke the plugin installer.
+override_dh_auto_build:
+override_dh_auto_test:
+override_dh_auto_install:

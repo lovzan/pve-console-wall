@@ -1,0 +1,28 @@
+# Build artifacts
+/dist/
+*.deb
+*.buildinfo
+*.changes
+*.tar.gz
+*.tar.xz
+*.zip
+
+# Debian build leftovers
+debian/pve-console-wall/
+debian/.debhelper/
+debian/files
+debian/debhelper-build-stamp
+debian/*.substvars
+debian/*.log
+obj-*/
+
+# Editor / OS cruft
+*.swp
+*~
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local Claude settings (keep out of the public repo)
+.claude/
