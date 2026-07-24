@@ -1,3 +1,15 @@
+pve-console-wall (1.0.8) stable; urgency=medium
+
+  * Console scaling and cursor alignment: replace the CSS object-fit hack (which
+    offset the mouse) with noVNC's own Local Scaling, driven via its settings
+    <select>. The console now zooms to fill the tile, centered, keeping aspect
+    ratio, with correct mouse mapping.
+  * Fix drag-to-reorder: console iframes swallowed drag/drop events. Disable
+    iframe pointer events during a drag so drops reach the tile targets; also
+    set a text/plain drag payload so the drag starts in all browsers.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 12:00:00 +0000
+
 pve-console-wall (1.0.7) stable; urgency=medium
 
   * Suppress the browser "changes you made may not be saved" (beforeunload)

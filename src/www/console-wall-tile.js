@@ -254,37 +254,60 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         }
     },
 
-    // The console page is same-origin, so we inject CSS into it to scale the
-    // noVNC canvas to fit the tile (centered, aspect preserved) and hide
-    // Proxmox's own noVNC control-bar chrome.
+    // The console page is same-origin. We (1) enable noVNC's own Local Scaling
+    // so the console zooms to fill the tile, centered, keeping aspect ratio and
+    // -- crucially -- correct mouse mapping; and (2) inject cosmetic CSS to hide
+    // the noVNC control-bar chrome (the wall provides its own controls).
     styleFrame: function(frame) {
+        let me = this;
         try {
             let doc = frame.contentDocument;
             if (!doc) {
                 return;
             }
-            let id = 'pcw-frame-style';
-            if (doc.getElementById(id)) {
-                return;
+            if (!doc.getElementById('pcw-frame-style')) {
+                let st = doc.createElement('style');
+                st.id = 'pcw-frame-style';
+                st.textContent =
+                    'html, body { margin:0 !important; height:100% !important;' +
+                        ' background:#111418 !important; overflow:hidden !important; }' +
+                    '#noVNC_screen { background:#111418 !important; }' +
+                    // hide the control-bar chrome; the elements still exist so we
+                    // can toggle the scaling <select> programmatically below.
+                    '#noVNC_control_bar_anchor, #noVNC_status,' +
+                        ' #noVNC_hint_anchor, #noVNC_bell { display:none !important; }';
+                doc.head.appendChild(st);
             }
-            let st = doc.createElement('style');
-            st.id = id;
-            st.textContent =
-                'html, body { margin:0 !important; height:100% !important;' +
-                    ' background:#111418 !important; overflow:hidden !important; }' +
-                '#noVNC_screen, #noVNC_container {' +
-                    ' width:100% !important; height:100% !important;' +
-                    ' background:#111418 !important; }' +
-                // scale the framebuffer canvas to fit the tile, centered
-                '#noVNC_canvas, canvas {' +
-                    ' width:100% !important; height:100% !important;' +
-                    ' object-fit:contain !important; object-position:center !important; }' +
-                // hide Proxmox/noVNC control-bar chrome (we drive it ourselves)
-                '#noVNC_control_bar_anchor, #noVNC_control_bar,' +
-                    ' #noVNC_status, #noVNC_hint_anchor, #noVNC_bell { display:none !important; }';
-            doc.head.appendChild(st);
+            me.enableScaling(frame, 0);
         } catch (e) {
-            // cross-origin or timing; non-fatal (console still shows, just not fitted)
+            // cross-origin or timing; non-fatal
+        }
+    },
+
+    // Switch noVNC's "Scaling Mode" to Local Scaling by driving its own settings
+    // <select> (id noVNC_setting_resize). Retries because the RFB object and the
+    // settings UI are created asynchronously after the page loads.
+    enableScaling: function(frame, attempt) {
+        let me = this;
+        if (me.destroyed_) {
+            return;
+        }
+        try {
+            let doc = frame.contentDocument;
+            let win = frame.contentWindow;
+            let sel = doc && doc.getElementById('noVNC_setting_resize');
+            if (sel && win) {
+                // Always dispatch change (even if already 'scale') so noVNC
+                // re-applies the mode once the RFB object exists post-connect.
+                sel.value = 'scale';
+                sel.dispatchEvent(new win.Event('change', { bubbles: true }));
+            }
+        } catch (e) {
+            // ignore and retry
+        }
+        // Keep trying for a few seconds so it also applies once RFB connects.
+        if (attempt < 16) {
+            setTimeout(() => me.enableScaling(frame, attempt + 1), 350);
         }
     },
 
@@ -569,11 +592,23 @@ Ext.define('PVE.consolewall.ConsoleTile', {
 
         hdom.addEventListener('dragstart', function(e) {
             e.dataTransfer.setData('text/pcw-key', me.key());
+            // Some browsers require a standard type for the drag to start.
+            e.dataTransfer.setData('text/plain', me.key());
             e.dataTransfer.effectAllowed = 'move';
             me.el.addCls('pcw-dragging');
+            // Disable pointer events on all console iframes so drag/drop events
+            // reach the tile divs instead of being swallowed by the iframes.
+            let w = me.getWall();
+            if (w) {
+                w.beginTileDrag();
+            }
         });
         hdom.addEventListener('dragend', function() {
             me.el.removeCls('pcw-dragging');
+            let w = me.getWall();
+            if (w) {
+                w.endTileDrag();
+            }
         });
 
         let root = me.el.dom;
@@ -589,13 +624,15 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         });
         root.addEventListener('drop', function(e) {
             me.el.removeCls('pcw-drop');
-            let from = e.dataTransfer.getData('text/pcw-key');
-            if (from && from !== me.key()) {
+            let from = e.dataTransfer.getData('text/pcw-key') ||
+                e.dataTransfer.getData('text/plain');
+            let w = me.getWall();
+            if (from && from !== me.key() && w) {
                 e.preventDefault();
-                let w = me.getWall();
-                if (w) {
-                    w.reorderTile(from, me.key());
-                }
+                w.reorderTile(from, me.key());
+            }
+            if (w) {
+                w.endTileDrag();
             }
         });
     },

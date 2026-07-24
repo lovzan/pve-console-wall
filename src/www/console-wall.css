@@ -23,6 +23,10 @@
     overflow: hidden;
 }
 
+/* While dragging, let drag events pass through the console iframes so the
+   tile drop targets receive them. */
+.pcw-dragging-active .pcw-console-frame { pointer-events: none !important; }
+
 /* Drag-reorder feedback. */
 .pcw-tile.pcw-dragging { opacity: 0.45; }
 .pcw-tile.pcw-drop {
