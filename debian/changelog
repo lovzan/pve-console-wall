@@ -1,3 +1,12 @@
+pve-console-wall (1.0.9) stable; urgency=medium
+
+  * Fix consoles not re-fitting in fullscreen. ExtJS does not re-run its layout
+    when the element enters/leaves fullscreen, so tiles kept their old size.
+    Force updateLayout()+relayout on fullscreenchange, and re-assert noVNC
+    scaling whenever a tile is resized (tile onResize).
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 13:00:00 +0000
+
 pve-console-wall (1.0.8) stable; urgency=medium
 
   * Console scaling and cursor alignment: replace the CSS object-fit hack (which

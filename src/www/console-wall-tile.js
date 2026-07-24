@@ -538,6 +538,20 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         me.applyReadonly();
     },
 
+    // When the wall resizes this tile (layout change, fullscreen, window
+    // resize), re-assert noVNC scaling so the console re-fits the new size.
+    onResize: function() {
+        let me = this;
+        me.callParent(arguments);
+        if (me.consoleLoaded && !me.destroyed_) {
+            let frame = document.getElementById(me.consoleId);
+            if (frame) {
+                // short burst (a couple of attempts) rather than the full retry
+                me.enableScaling(frame, 14);
+            }
+        }
+    },
+
     updateShowOverlay: function(show) {
         let me = this;
         let overlay = me.el && me.el.dom.querySelector('.pcw-overlay-metrics');

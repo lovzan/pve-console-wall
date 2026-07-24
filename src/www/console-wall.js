@@ -105,11 +105,28 @@ Ext.define('PVE.consolewall.ConsoleWall', {
         me.on('afterrender', function() {
             me.resourceStore.startUpdate();
             me.loadPersistedState();
+
+            // Entering/leaving fullscreen changes the element's pixel size but
+            // ExtJS does not re-run its layout, so force it and relayout tiles.
+            me.fsHandler = function() {
+                Ext.defer(function() {
+                    if (me.destroyed || me.destroying) {
+                        return;
+                    }
+                    me.updateLayout();
+                    me.relayoutTiles();
+                }, 150);
+            };
+            document.addEventListener('fullscreenchange', me.fsHandler);
         }, me);
 
         me.on('beforedestroy', function() {
             me.stopRotation();
             me.flushAutosave();
+            if (me.fsHandler) {
+                document.removeEventListener('fullscreenchange', me.fsHandler);
+                me.fsHandler = null;
+            }
             me.resourceStore.stopUpdate();
             me.clearTiles();
         }, me);
