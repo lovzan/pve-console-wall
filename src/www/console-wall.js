@@ -38,17 +38,20 @@ Ext.define('PVE.consolewall.ConsoleWall', {
     autosaveName: '__autosave__',
 
     // Predefined camera-wall styles. `cap` is how many tiles the style shows;
-    // `hero` (if set) is the column/row span of the enlarged main tile.
+    // `cols`/`rows` are the base grid; `hero` (if set) is the column/row span
+    // of the enlarged main tile. Sizing/positioning is done in JS (see
+    // relayoutTiles) rather than CSS grid, which does not cooperate with
+    // ExtJS's layout manager.
     styles: {
-        '1':    { cls: 'pcw-grid-1',    cap: 1,  label: gettext('Single') },
-        '4':    { cls: 'pcw-grid-4',    cap: 4,  label: '2 x 2 (4)' },
-        '6':    { cls: 'pcw-grid-6',    cap: 6,  hero: 2, label: '1 + 5 (6)' },
-        '8':    { cls: 'pcw-grid-8',    cap: 8,  hero: 3, label: '1 + 7 (8)' },
-        '9':    { cls: 'pcw-grid-9',    cap: 9,  label: '3 x 3 (9)' },
-        '13':   { cls: 'pcw-grid-13',   cap: 13, hero: 2, label: '1 + 12 (13)' },
-        '16':   { cls: 'pcw-grid-16',   cap: 16, label: '4 x 4 (16)' },
-        '25':   { cls: 'pcw-grid-25',   cap: 25, label: '5 x 5 (25)' },
-        'auto': { cls: 'pcw-grid-auto', cap: 0,  label: gettext('Auto fit') },
+        '1':    { cap: 1,  cols: 1, rows: 1, label: gettext('Single') },
+        '4':    { cap: 4,  cols: 2, rows: 2, label: '2 x 2 (4)' },
+        '6':    { cap: 6,  cols: 3, rows: 3, hero: 2, label: '1 + 5 (6)' },
+        '8':    { cap: 8,  cols: 4, rows: 4, hero: 3, label: '1 + 7 (8)' },
+        '9':    { cap: 9,  cols: 3, rows: 3, label: '3 x 3 (9)' },
+        '13':   { cap: 13, cols: 4, rows: 4, hero: 2, label: '1 + 12 (13)' },
+        '16':   { cap: 16, cols: 4, rows: 4, label: '4 x 4 (16)' },
+        '25':   { cap: 25, cols: 5, rows: 5, label: '5 x 5 (25)' },
+        'auto': { cap: 0,  cols: 0, rows: 0, label: gettext('Auto fit') },
     },
 
     // Map legacy persisted values to the new style keys.
@@ -85,8 +88,14 @@ Ext.define('PVE.consolewall.ConsoleWall', {
             xtype: 'container',
             itemId: 'wallGrid',
             cls: 'pcw-grid',
-            layout: 'auto',
-            scrollable: true,
+            // Tiles are absolutely positioned; we compute their geometry in
+            // relayoutTiles() so ExtJS sizes each console body correctly.
+            layout: 'absolute',
+            listeners: {
+                resize: function() {
+                    me.relayoutTiles();
+                },
+            },
         }];
 
         me.callParent();
@@ -279,14 +288,16 @@ Ext.define('PVE.consolewall.ConsoleWall', {
             container.add({
                 xtype: 'component',
                 cls: 'pcw-empty',
+                anchor: '100% 100%', // fill the absolute-layout container
                 html: '<div class="pcw-empty-inner"><i class="fa fa-th fa-3x"></i><p>' +
                     gettext('No consoles selected. Click "Select VMs" to build your wall.') +
                     '</p></div>',
             });
         }
 
-        me.updateHeroTile();
         me.updateWallStatus();
+        // Defer so the container has its final size before we measure it.
+        Ext.defer(me.relayoutTiles, 30, me);
     },
 
     // Keys currently shown, honoring the style capacity and rotation offset.
@@ -303,21 +314,83 @@ Ext.define('PVE.consolewall.ConsoleWall', {
         return page;
     },
 
-    // Enlarge the first tile for "hero" styles (1+5, 1+7, 1+12).
-    updateHeroTile: function() {
-        let me = this;
-        let style = me.styles[me.gridStyle] || {};
-        me.tiles.forEach(function(t) {
-            if (t.el) {
-                t.el.removeCls(['pcw-hero', 'pcw-hero3']);
+    // Compute (col, row, colspan, rowspan) placement for each tile, honoring
+    // the hero span of "1+N" styles. Returns an array parallel to me.tiles.
+    computeCells: function(cols, rows, hero, n) {
+        let cells = [];
+        // occupancy grid
+        let occ = [];
+        for (let r = 0; r < rows; r++) {
+            occ.push(new Array(cols).fill(false));
+        }
+        let ti = 0;
+        if (hero && n > 0) {
+            let span = Math.min(hero, cols, rows);
+            for (let r = 0; r < span; r++) {
+                for (let c = 0; c < span; c++) {
+                    occ[r][c] = true;
+                }
             }
-        });
-        if (style.hero && me.tiles.length > 0) {
-            let hero = me.tiles[0];
-            if (hero.el) {
-                hero.el.addCls(style.hero >= 3 ? 'pcw-hero3' : 'pcw-hero');
+            cells[ti++] = { c: 0, r: 0, cs: span, rs: span };
+        }
+        // fill remaining tiles into free cells, row-major
+        for (let r = 0; r < rows && ti < n; r++) {
+            for (let c = 0; c < cols && ti < n; c++) {
+                if (!occ[r][c]) {
+                    occ[r][c] = true;
+                    cells[ti++] = { c: c, r: r, cs: 1, rs: 1 };
+                }
             }
         }
+        return cells;
+    },
+
+    // Size and position every tile. This is the core of the wall layout: it
+    // replaces CSS Grid (which does not size ExtJS component bodies) with
+    // explicit per-tile geometry.
+    relayoutTiles: function() {
+        let me = this;
+        let container = me.down('#wallGrid');
+        if (!container || !container.el || me.tiles.length === 0) {
+            return;
+        }
+        let W = container.el.dom.clientWidth;
+        let H = container.el.dom.clientHeight;
+        if (W <= 0 || H <= 0) {
+            return;
+        }
+
+        let n = me.tiles.length;
+        let style = me.styles[me.gridStyle] || me.styles['9'];
+        let cols = style.cols;
+        let rows = style.rows;
+        let hero = style.hero || 0;
+
+        // "auto" (and any zero-dim style) derives a near-square grid from count.
+        if (!cols || !rows) {
+            cols = Math.ceil(Math.sqrt(n));
+            rows = Math.ceil(n / cols);
+            hero = 0;
+        }
+
+        let gap = 6;
+        let cellW = (W - gap * (cols + 1)) / cols;
+        let cellH = (H - gap * (rows + 1)) / rows;
+
+        let cells = me.computeCells(cols, rows, hero, n);
+
+        me.tiles.forEach(function(tile, i) {
+            let cell = cells[i];
+            if (!cell) {
+                return;
+            }
+            let x = Math.round(gap + cell.c * (cellW + gap));
+            let y = Math.round(gap + cell.r * (cellH + gap));
+            let w = Math.round(cell.cs * cellW + (cell.cs - 1) * gap);
+            let h = Math.round(cell.rs * cellH + (cell.rs - 1) * gap);
+            tile.setPosition(x, y);
+            tile.setSize(w, h);
+        });
     },
 
     updateWallStatus: function() {
@@ -366,13 +439,8 @@ Ext.define('PVE.consolewall.ConsoleWall', {
 
     applyGridStyleCls: function() {
         let me = this;
-        let container = me.down('#wallGrid');
-        if (!container || !container.el) {
-            return;
-        }
-        Object.keys(me.styles).forEach((k) => container.el.removeCls(me.styles[k].cls));
-        let style = me.styles[me.gridStyle] || me.styles['9'];
-        container.el.addCls(style.cls);
+        // Geometry is computed in relayoutTiles(); just trigger a relayout.
+        me.relayoutTiles();
     },
 
     gridCapacity: function() {
@@ -489,7 +557,7 @@ Ext.define('PVE.consolewall.ConsoleWall', {
             }
         });
         me.tiles = me.selection.map((k) => byKey[k]).filter((t) => t);
-        me.updateHeroTile();
+        me.relayoutTiles();
     },
 
     // ---- auto-rotation -----------------------------------------------------

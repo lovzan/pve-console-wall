@@ -1,3 +1,14 @@
+pve-console-wall (1.0.3) stable; urgency=medium
+
+  * Fix tiles rendering as thin stacked strips with no console area. The layout
+    mixed CSS Grid with ExtJS's layout manager, and CSS forced height:auto and
+    position:relative on tiles, collapsing them. Replaced with a JS layout
+    engine (absolute positioning) that computes each tile's geometry — including
+    hero spans for the 1+N styles — so ExtJS sizes the console bodies correctly.
+    Tiles now re-flow on container resize.
+
+ -- Console Wall Plugin <noreply@example.com>  Fri, 24 Jul 2026 20:00:00 +0000
+
 pve-console-wall (1.0.2) stable; urgency=medium
 
   * Fix blank Datacenter view (PVE 7/8/9). The datacenter-tree override

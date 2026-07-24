@@ -13,49 +13,15 @@
 
 /* ---- the grid of tiles ------------------------------------------------- */
 
+/* The wall container. Tiles inside are absolutely positioned by JS
+   (relayoutTiles), so this is just a positioned, clipped backdrop. */
 .pcw-grid {
-    display: grid !important;
-    gap: 6px;
-    padding: 6px;
-    box-sizing: border-box;
+    position: relative;
     width: 100%;
     height: 100%;
     background: #14161a;
-    /* dense flow lets small tiles pack around a hero tile, NVR-style */
-    grid-auto-flow: row dense;
+    overflow: hidden;
 }
-
-/* Ext places children absolutely under some layouts; force normal flow so
-   CSS grid can lay them out. */
-.pcw-grid > .x-container,
-.pcw-grid > .pcw-tile {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    width: auto !important;
-    height: auto !important;
-    min-height: 0;
-    min-width: 0;
-}
-
-/* Predefined camera-wall styles. Square styles are NxN; "hero" styles place
-   one large tile with the rest packed around it (1+5, 1+7, 1+12). */
-.pcw-grid-1  { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-.pcw-grid-4  { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
-.pcw-grid-6  { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
-.pcw-grid-8  { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
-.pcw-grid-9  { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
-.pcw-grid-13 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
-.pcw-grid-16 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); }
-.pcw-grid-25 { grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); }
-.pcw-grid-auto {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    grid-auto-rows: minmax(240px, 1fr);
-}
-
-/* Hero (main) tile spans, applied by JS to the first tile in hero styles. */
-.pcw-hero  { grid-column: span 2 !important; grid-row: span 2 !important; }
-.pcw-hero3 { grid-column: span 3 !important; grid-row: span 3 !important; }
 
 /* Drag-reorder feedback. */
 .pcw-tile.pcw-dragging { opacity: 0.45; }
@@ -77,6 +43,7 @@
 
 .pcw-tile-body {
     background: #0d0f12;
+    padding: 0 !important;
 }
 
 .pcw-tile-tbar {
@@ -225,11 +192,11 @@
 /* ---- empty state ------------------------------------------------------- */
 
 .pcw-empty {
-    grid-column: 1 / -1;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 60vh;
+    width: 100%;
+    height: 100%;
     color: #6b7280;
 }
 .pcw-empty-inner { text-align: center; }
