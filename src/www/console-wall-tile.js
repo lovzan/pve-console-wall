@@ -228,8 +228,43 @@ Ext.define('PVE.consolewall.ConsoleTile', {
             me.setStatusMessage(null);
             me.setConnectedState(true);
             me.applyReadonly();
+            me.styleFrame(frame);
         };
         frame.src = me.consoleUrl();
+    },
+
+    // The console page is same-origin, so we inject CSS into it to scale the
+    // noVNC canvas to fit the tile (centered, aspect preserved) and hide
+    // Proxmox's own noVNC control-bar chrome.
+    styleFrame: function(frame) {
+        try {
+            let doc = frame.contentDocument;
+            if (!doc) {
+                return;
+            }
+            let id = 'pcw-frame-style';
+            if (doc.getElementById(id)) {
+                return;
+            }
+            let st = doc.createElement('style');
+            st.id = id;
+            st.textContent =
+                'html, body { margin:0 !important; height:100% !important;' +
+                    ' background:#111418 !important; overflow:hidden !important; }' +
+                '#noVNC_screen, #noVNC_container {' +
+                    ' width:100% !important; height:100% !important;' +
+                    ' background:#111418 !important; }' +
+                // scale the framebuffer canvas to fit the tile, centered
+                '#noVNC_canvas, canvas {' +
+                    ' width:100% !important; height:100% !important;' +
+                    ' object-fit:contain !important; object-position:center !important; }' +
+                // hide Proxmox/noVNC control-bar chrome (we drive it ourselves)
+                '#noVNC_control_bar_anchor, #noVNC_control_bar,' +
+                    ' #noVNC_status, #noVNC_hint_anchor, #noVNC_bell { display:none !important; }';
+            doc.head.appendChild(st);
+        } catch (e) {
+            // cross-origin or timing; non-fatal (console still shows, just not fitted)
+        }
     },
 
     reconnect: function() {

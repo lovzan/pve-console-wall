@@ -1,3 +1,13 @@
+pve-console-wall (1.0.5) stable; urgency=medium
+
+  * Console image now fits and centers in each tile. The embedded noVNC canvas
+    rendered at native resolution top-left; inject same-origin CSS into the
+    console iframe to scale the canvas (object-fit: contain, centered) and hide
+    Proxmox's noVNC control-bar chrome. For pixel-accurate interaction use a
+    tile's fullscreen button (opens Proxmox's native console).
+
+ -- Console Wall Plugin <noreply@example.com>  Fri, 24 Jul 2026 23:00:00 +0000
+
 pve-console-wall (1.0.4) stable; urgency=medium
 
   * Fix "noVNC failed to load" on Proxmox VE 9. novnc-pve ships only a bundled
