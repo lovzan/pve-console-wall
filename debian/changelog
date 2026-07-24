@@ -1,3 +1,15 @@
+pve-console-wall (1.0.13) stable; urgency=medium
+
+  * Console now fills the whole tile (width and height). noVNC's Local Scaling
+    is a "contain" fit that left black bars and never used the full tile width.
+    Replace it with pure CSS (object-fit: cover) on the noVNC canvas, which
+    covers the tile at any size, adapts automatically on resize, and keeps
+    aspect ratio (slight crop). noVNC's own scaling is turned off so it does not
+    fight the CSS. Trade-off: interactive cursor mapping may be slightly off on
+    covered consoles -- use a tile's fullscreen for pixel-accurate control.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 17:00:00 +0000
+
 pve-console-wall (1.0.12) stable; urgency=medium
 
   * Show guest tags reliably (e.g. the "xen" tag). The PVEResources model does
