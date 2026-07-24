@@ -504,25 +504,6 @@ Ext.define('PVE.consolewall.ConsoleWall', {
 
     // ---- console ordering / positions --------------------------------------
 
-    // While a tile is being dragged, disable pointer events on every console
-    // iframe so drag/drop events reach the tile divs (iframes otherwise swallow
-    // them). Re-enabled on drop/dragend.
-    beginTileDrag: function() {
-        let me = this;
-        let g = me.down('#wallGrid');
-        if (g && g.el) {
-            g.el.addCls('pcw-dragging-active');
-        }
-    },
-
-    endTileDrag: function() {
-        let me = this;
-        let g = me.down('#wallGrid');
-        if (g && g.el) {
-            g.el.removeCls('pcw-dragging-active');
-        }
-    },
-
     // Move `fromKey` to occupy the position currently held by `toKey`.
     reorderTile: function(fromKey, toKey) {
         let me = this;

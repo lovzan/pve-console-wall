@@ -30,8 +30,6 @@ there is no explicit "save" needed to keep your working wall.
 
 Each console can be positioned like a camera feed:
 
-- **Drag** a tile by the ⤢ handle (top-left of its toolbar) and drop it onto
-  another tile to move it into that position.
 - Use the **‹ / ›** buttons to nudge a console back or forward one slot.
 - Click the **★** button to **Set as main** — promotes the console to the large
   hero cell (in the `1+5`, `1+7`, `1+12` styles).

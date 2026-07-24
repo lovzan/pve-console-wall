@@ -1,3 +1,13 @@
+pve-console-wall (1.0.10) stable; urgency=medium
+
+  * Remove drag-to-reorder (unreliable with console iframes). Reordering stays
+    available via the per-tile move back/forward (<>) and set-as-main (*)
+    buttons.
+  * Fit the noVNC console to its grid cell: force the noVNC screen/container to
+    fill the tile zone and center the scaled canvas on both axes.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 14:00:00 +0000
+
 pve-console-wall (1.0.9) stable; urgency=medium
 
   * Fix consoles not re-fitting in fullscreen. ExtJS does not re-run its layout

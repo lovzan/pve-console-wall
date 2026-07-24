@@ -70,7 +70,6 @@ Ext.define('PVE.consolewall.ConsoleTile', {
 
         me.on('afterrender', function() {
             me.renderLabel();
-            me.setupDragDrop();
             me.startConsole();
         }, me);
         me.on('beforedestroy', me.shutdownTile, me);
@@ -94,12 +93,6 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         return {
             cls: 'pcw-tile-tbar',
             items: [{
-                xtype: 'button',
-                iconCls: 'fa fa-arrows',
-                cls: 'pcw-drag-handle',
-                itemId: 'dragHandle',
-                tooltip: gettext('Drag to reposition'),
-            }, {
                 xtype: 'tbtext',
                 cls: 'pcw-tile-title',
                 html: '<span class="pcw-status-dot" data-role="dot"></span>' +
@@ -269,9 +262,17 @@ Ext.define('PVE.consolewall.ConsoleTile', {
                 let st = doc.createElement('style');
                 st.id = 'pcw-frame-style';
                 st.textContent =
-                    'html, body { margin:0 !important; height:100% !important;' +
+                    'html, body { margin:0 !important; padding:0 !important;' +
+                        ' width:100% !important; height:100% !important;' +
                         ' background:#111418 !important; overflow:hidden !important; }' +
-                    '#noVNC_screen { background:#111418 !important; }' +
+                    // make the noVNC screen fill the whole tile zone and center
+                    // the (scaled) canvas within it, both axes
+                    '#noVNC_container, #noVNC_screen {' +
+                        ' width:100% !important; height:100% !important;' +
+                        ' background:#111418 !important;' +
+                        ' display:flex !important; align-items:center !important;' +
+                        ' justify-content:center !important; }' +
+                    '#noVNC_canvas, canvas { margin:auto !important; }' +
                     // hide the control-bar chrome; the elements still exist so we
                     // can toggle the scaling <select> programmatically below.
                     '#noVNC_control_bar_anchor, #noVNC_status,' +
@@ -591,64 +592,6 @@ Ext.define('PVE.consolewall.ConsoleTile', {
             '<span class="pcw-lbl-name">' + Ext.String.htmlEncode(res.name || '') + '</span>' +
             tagsHtml;
         el.style.display = me.getShowLabel() ? '' : 'none';
-    },
-
-    // ---- drag-and-drop reordering -----------------------------------------
-
-    setupDragDrop: function() {
-        let me = this;
-        let handle = me.down('#dragHandle');
-        if (!handle || !handle.el) {
-            return;
-        }
-        let hdom = handle.el.dom;
-        hdom.setAttribute('draggable', 'true');
-
-        hdom.addEventListener('dragstart', function(e) {
-            e.dataTransfer.setData('text/pcw-key', me.key());
-            // Some browsers require a standard type for the drag to start.
-            e.dataTransfer.setData('text/plain', me.key());
-            e.dataTransfer.effectAllowed = 'move';
-            me.el.addCls('pcw-dragging');
-            // Disable pointer events on all console iframes so drag/drop events
-            // reach the tile divs instead of being swallowed by the iframes.
-            let w = me.getWall();
-            if (w) {
-                w.beginTileDrag();
-            }
-        });
-        hdom.addEventListener('dragend', function() {
-            me.el.removeCls('pcw-dragging');
-            let w = me.getWall();
-            if (w) {
-                w.endTileDrag();
-            }
-        });
-
-        let root = me.el.dom;
-        root.addEventListener('dragover', function(e) {
-            if (e.dataTransfer && Ext.Array.contains(e.dataTransfer.types || [], 'text/pcw-key')) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                me.el.addCls('pcw-drop');
-            }
-        });
-        root.addEventListener('dragleave', function() {
-            me.el.removeCls('pcw-drop');
-        });
-        root.addEventListener('drop', function(e) {
-            me.el.removeCls('pcw-drop');
-            let from = e.dataTransfer.getData('text/pcw-key') ||
-                e.dataTransfer.getData('text/plain');
-            let w = me.getWall();
-            if (from && from !== me.key() && w) {
-                e.preventDefault();
-                w.reorderTile(from, me.key());
-            }
-            if (w) {
-                w.endTileDrag();
-            }
-        });
     },
 
     // ---- teardown ----------------------------------------------------------
