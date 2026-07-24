@@ -10,6 +10,7 @@
 
 Ext.define('PVE.consolewall.VMSelector', {
     extend: 'Ext.window.Window',
+    alias: 'widget.pveConsoleWallSelector',
     xtype: 'pveConsoleWallSelector',
 
     title: gettext('Select VMs for Console Wall'),

@@ -11,6 +11,9 @@
 
 Ext.define('PVE.consolewall.ConsoleWall', {
     extend: 'Ext.panel.Panel',
+    // alias registers the widget.* so {xtype: 'pveConsoleWall'} can instantiate
+    // it by string (xtype alone in the class body is not enough here).
+    alias: 'widget.pveConsoleWall',
     xtype: 'pveConsoleWall',
 
     title: gettext('Console Wall'),

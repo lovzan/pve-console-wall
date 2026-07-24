@@ -11,6 +11,7 @@
 
 Ext.define('PVE.consolewall.ConsoleTile', {
     extend: 'Ext.panel.Panel',
+    alias: 'widget.pveConsoleWallTile',
     xtype: 'pveConsoleWallTile',
 
     cls: 'pcw-tile',
