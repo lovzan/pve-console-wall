@@ -50,7 +50,8 @@ Ext.define('PVE.consolewall.VMSelector', {
                 node: d.node,
                 type: d.type,
                 status: d.status,
-                tags: d.tags || '',
+                // fall back to the raw API payload if the model omits `tags`
+                tags: d.tags || (r.raw && r.raw.tags) || '',
                 checked: !!selected[key],
             });
         });

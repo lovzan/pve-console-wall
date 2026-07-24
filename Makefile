@@ -1,7 +1,7 @@
 # Proxmox Console Wall - build & install helper
 
 PACKAGE = pve-console-wall
-VERSION = 1.0.11
+VERSION = 1.0.12
 
 SRC_JS = src/www/console-wall-tile.js \
          src/www/console-wall-selector.js \

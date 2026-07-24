@@ -1,3 +1,12 @@
+pve-console-wall (1.0.12) stable; urgency=medium
+
+  * Show guest tags reliably (e.g. the "xen" tag). The PVEResources model does
+    not always expose `tags` in record.data, so read it with a fallback to the
+    raw API payload (record.raw.tags) in both the label overlay and the tag
+    filter.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 16:00:00 +0000
+
 pve-console-wall (1.0.11) stable; urgency=medium
 
   * Fix "PVE.Utils.render_size is not a function" on PVE 9 (the metrics overlay

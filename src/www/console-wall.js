@@ -270,7 +270,9 @@ Ext.define('PVE.consolewall.ConsoleWall', {
             name: d.name,
             type: d.type === 'lxc' ? 'lxc' : 'qemu',
             status: d.status,
-            tags: d.tags || '',
+            // The PVEResources model may not expose `tags` in .data; fall back
+            // to the raw API payload which always carries it.
+            tags: d.tags || (rec.raw && rec.raw.tags) || '',
         };
     },
 
