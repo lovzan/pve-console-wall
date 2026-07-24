@@ -33,31 +33,10 @@ Ext.define('PVE.consolewall.ConsoleTile', {
     },
 
     // runtime state
-    rfb: null,
-    reconnectTimer: null,
     statusTimer: null,
-    reconnectAttempts: 0,
     connected: false,
+    consoleLoaded: false,
     destroyed_: false,
-
-    // noVNC RFB module is loaded lazily and cached across all tiles
-    statics: {
-        rfbModulePromise: null,
-        loadRFB: function() {
-            let me = PVE.consolewall.ConsoleTile;
-            if (!me.rfbModulePromise) {
-                // Proxmox ships noVNC under /novnc/ as ES modules.
-                me.rfbModulePromise = import('/novnc/core/rfb.js')
-                    .then((mod) => mod.default)
-                    .catch((err) => {
-                        // Reset so a later tile can retry after a transient failure.
-                        me.rfbModulePromise = null;
-                        throw err;
-                    });
-            }
-            return me.rfbModulePromise;
-        },
-    },
 
     initComponent: function() {
         let me = this;
@@ -69,14 +48,18 @@ Ext.define('PVE.consolewall.ConsoleTile', {
 
         me.consoleId = 'pcw-console-' + res.node + '-' + res.vmid + '-' + Ext.id();
 
+        // We embed Proxmox's own noVNC console page in an iframe rather than
+        // importing a noVNC module: novnc-pve ships only a bundled app.js (no
+        // core/rfb.js), and the iframe reuses Proxmox's auth/ticket flow and
+        // works across PVE versions.
         me.items = [{
             xtype: 'container',
             layout: 'fit',
             items: [{
                 xtype: 'component',
                 cls: 'pcw-console-holder',
-                // The div that noVNC will attach its canvas to.
-                html: '<div id="' + me.consoleId + '" class="pcw-console-target"></div>' +
+                html: '<iframe id="' + me.consoleId + '" class="pcw-console-frame" ' +
+                          'frameborder="0" scrolling="no" allowfullscreen></iframe>' +
                       '<div class="pcw-overlay pcw-overlay-label"></div>' +
                       '<div class="pcw-overlay pcw-overlay-metrics"></div>' +
                       '<div class="pcw-overlay pcw-overlay-status"></div>',
@@ -202,149 +185,85 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         me.connectConsole();
     },
 
+    // Build the URL of Proxmox's own noVNC console page for this guest.
+    consoleUrl: function() {
+        let me = this;
+        let res = me.getVmResource();
+        let consoleType = res.type === 'lxc' ? 'lxc' : 'kvm';
+        let params = {
+            console: consoleType,
+            novnc: 1,
+            vmid: res.vmid,
+            vmname: res.name || '',
+            node: res.node,
+            resize: 'scale',
+        };
+        // Cache-bust so reconnect always reloads a fresh console.
+        params._dc = Date.now();
+        return '/?' + Ext.Object.toQueryString(params);
+    },
+
     connectConsole: function() {
         let me = this;
         let res = me.getVmResource();
         if (!res || me.destroyed_) {
             return;
         }
-
-        me.setStatusMessage(gettext('Connecting...'));
-
-        let vmtype = res.type === 'lxc' ? 'lxc' : 'qemu';
-        let baseUrl = '/nodes/' + res.node + '/' + vmtype + '/' + res.vmid;
-        let proxyParams = {};
-        if (vmtype === 'lxc') {
-            proxyParams = { 'websocket': 1 };
-        } else {
-            proxyParams = { 'websocket': 1, 'generate-password': 0 };
+        let frame = document.getElementById(me.consoleId);
+        if (!frame) {
+            return;
         }
 
-        // 1) Ask Proxmox for a short-lived VNC ticket + port.
-        Proxmox.Utils.API2Request({
-            url: baseUrl + '/vncproxy',
-            method: 'POST',
-            params: proxyParams,
-            success: function(response) {
-                if (me.destroyed_) {
-                    return;
-                }
-                let data = response.result.data;
-                me.openRFB(res, vmtype, data);
-            },
-            failure: function(response) {
-                me.setStatusMessage(gettext('Console error') + ': ' +
-                    (response.htmlStatus || response.result?.message || ''));
-                me.scheduleReconnect();
-            },
-        });
-    },
+        me.setStatusMessage(gettext('Connecting...'));
+        me.consoleLoaded = false;
 
-    openRFB: function(res, vmtype, data) {
-        let me = this;
-
-        PVE.consolewall.ConsoleTile.loadRFB().then((RFB) => {
+        // The console page authenticates via the session cookie and obtains its
+        // own VNC ticket, so we just point the iframe at it.
+        frame.onload = function() {
             if (me.destroyed_) {
                 return;
             }
-            let target = document.getElementById(me.consoleId);
-            if (!target) {
-                return;
-            }
-            target.innerHTML = '';
-
-            // 2) Build the authenticated WebSocket URL to the VNC proxy.
-            let loc = window.location;
-            let proto = loc.protocol === 'https:' ? 'wss' : 'ws';
-            let path = '/api2/json/nodes/' + res.node + '/' + vmtype + '/' +
-                res.vmid + '/vncwebsocket' +
-                '?port=' + encodeURIComponent(data.port) +
-                '&vncticket=' + encodeURIComponent(data.ticket);
-            let url = proto + '://' + loc.host + path;
-
-            try {
-                me.rfb = new RFB(target, url, {
-                    credentials: { password: data.ticket },
-                    wsProtocols: ['binary'],
-                });
-            } catch (err) {
-                me.setStatusMessage(gettext('Console error') + ': ' + err.message);
-                me.scheduleReconnect();
-                return;
-            }
-
-            me.rfb.viewOnly = me.getMode() === 'readonly';
-            me.rfb.scaleViewport = true;
-            me.rfb.resizeSession = false;
-            me.rfb.background = '#111418';
-
-            me.rfb.addEventListener('connect', () => me.onRfbConnect());
-            me.rfb.addEventListener('disconnect', (e) => me.onRfbDisconnect(e));
-            me.rfb.addEventListener('securityfailure', (e) => {
-                me.setStatusMessage(gettext('Authentication failure'));
-            });
-        }).catch((err) => {
-            me.setStatusMessage(gettext('noVNC failed to load') + ': ' + err.message);
-        });
-    },
-
-    onRfbConnect: function() {
-        let me = this;
-        me.connected = true;
-        me.reconnectAttempts = 0;
-        me.setStatusMessage(null);
-        me.setConnectedState(true);
-    },
-
-    onRfbDisconnect: function(e) {
-        let me = this;
-        me.connected = false;
-        me.setConnectedState(false);
-        if (me.destroyed_) {
-            return;
-        }
-        let clean = e && e.detail && e.detail.clean;
-        me.setStatusMessage(clean ? gettext('Disconnected') : gettext('Connection lost'));
-        me.scheduleReconnect();
-    },
-
-    scheduleReconnect: function() {
-        let me = this;
-        if (me.destroyed_ || me.reconnectTimer) {
-            return;
-        }
-        me.reconnectAttempts++;
-        // Exponential backoff capped at 30s so a wall of dead VMs stays calm.
-        let delay = Math.min(30000, 2000 * Math.pow(1.6, me.reconnectAttempts - 1));
-        me.reconnectTimer = Ext.defer(function() {
-            me.reconnectTimer = null;
-            let res = me.getVmResource();
-            if (res && (!res.status || res.status === 'running')) {
-                me.connectConsole();
-            }
-        }, delay);
+            me.consoleLoaded = true;
+            me.connected = true;
+            me.setStatusMessage(null);
+            me.setConnectedState(true);
+            me.applyReadonly();
+        };
+        frame.src = me.consoleUrl();
     },
 
     reconnect: function() {
         let me = this;
-        me.teardownRFB();
-        me.reconnectAttempts = 0;
-        if (me.reconnectTimer) {
-            clearTimeout(me.reconnectTimer);
-            me.reconnectTimer = null;
+        me.teardownConsole();
+        let res = me.getVmResource();
+        if (res && (!res.status || res.status === 'running')) {
+            me.connectConsole();
         }
-        me.connectConsole();
     },
 
-    teardownRFB: function() {
+    teardownConsole: function() {
         let me = this;
-        if (me.rfb) {
+        me.connected = false;
+        me.consoleLoaded = false;
+        me.setConnectedState(false);
+        let frame = document.getElementById(me.consoleId);
+        if (frame) {
+            frame.onload = null;
             try {
-                me.rfb.disconnect();
+                frame.src = 'about:blank';
             } catch (e) {
-                // ignore teardown races
+                // ignore
             }
-            me.rfb = null;
+        }
+    },
+
+    // Read-only mode blocks all input by disabling pointer events on the
+    // iframe (keyboard focus cannot reach it without a click).
+    applyReadonly: function() {
+        let me = this;
+        let frame = document.getElementById(me.consoleId);
+        if (frame) {
+            frame.style.pointerEvents = me.getMode() === 'readonly' ? 'none' : 'auto';
         }
     },
 
@@ -418,7 +337,7 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         }
         // If it stopped, tear the console down and show status.
         if (data.status !== 'running') {
-            me.teardownRFB();
+            me.teardownConsole();
             me.setStatusMessage(Ext.String.format(gettext('Guest is {0}'), data.status));
         }
     },
@@ -537,9 +456,7 @@ Ext.define('PVE.consolewall.ConsoleTile', {
 
     updateMode: function(mode) {
         let me = this;
-        if (me.rfb) {
-            me.rfb.viewOnly = mode === 'readonly';
-        }
+        me.applyReadonly();
     },
 
     updateShowOverlay: function(show) {
@@ -636,10 +553,6 @@ Ext.define('PVE.consolewall.ConsoleTile', {
             clearInterval(me.statusTimer);
             me.statusTimer = null;
         }
-        if (me.reconnectTimer) {
-            clearTimeout(me.reconnectTimer);
-            me.reconnectTimer = null;
-        }
-        me.teardownRFB();
+        me.teardownConsole();
     },
 });

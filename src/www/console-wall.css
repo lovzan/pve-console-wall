@@ -88,16 +88,14 @@
     background: #111418;
 }
 
-.pcw-console-target {
+.pcw-console-frame {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-}
-
-.pcw-console-target canvas {
+    border: 0;
     display: block;
-    margin: 0 auto;
+    background: #111418;
 }
 
 /* ---- overlays ---------------------------------------------------------- */

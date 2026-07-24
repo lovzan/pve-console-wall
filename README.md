@@ -50,7 +50,7 @@ adds one small read/write API for layout persistence and an ExtJS UI.
 | Concern            | Mechanism |
 |--------------------|-----------|
 | VM/CT list         | `GET /cluster/resources?type=vm` |
-| Live console       | `POST /nodes/{node}/{qemu,lxc}/{vmid}/vncproxy` then a `wss://` connection to `.../vncwebsocket`, rendered by the bundled noVNC RFB module |
+| Live console       | An `<iframe>` embedding Proxmox's own noVNC console page (`/?console=…&novnc=1&vmid=…&node=…`), which reuses Proxmox's session auth and VNC ticket flow |
 | Metrics overlay    | `GET /nodes/{node}/{qemu,lxc}/{vmid}/status/current` (polled) |
 | Quick actions      | `POST /nodes/{node}/{qemu,lxc}/{vmid}/status/{start,stop,reset,shutdown}` and `/snapshot` |
 | Saved layouts      | `GET/POST/DELETE /cluster/console-wall/layouts` (this plugin) |

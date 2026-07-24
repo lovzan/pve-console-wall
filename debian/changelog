@@ -1,3 +1,14 @@
+pve-console-wall (1.0.4) stable; urgency=medium
+
+  * Fix "noVNC failed to load" on Proxmox VE 9. novnc-pve ships only a bundled
+    app.js (no importable core/rfb.js ES module), so the previous dynamic import
+    could never resolve. Each console now embeds Proxmox's own noVNC console
+    page in an iframe (/?console=...&novnc=1&vmid=...&node=...), reusing the
+    native auth/ticket flow. Read-only mode disables iframe pointer events;
+    reconnect reloads the frame. Version-independent.
+
+ -- Console Wall Plugin <noreply@example.com>  Fri, 24 Jul 2026 22:00:00 +0000
+
 pve-console-wall (1.0.3) stable; urgency=medium
 
   * Fix tiles rendering as thin stacked strips with no console area. The layout
