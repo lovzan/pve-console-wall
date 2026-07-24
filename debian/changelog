@@ -1,3 +1,13 @@
+pve-console-wall (1.0.2) stable; urgency=medium
+
+  * Fix blank Datacenter view (PVE 7/8/9). The datacenter-tree override
+    captured and re-invoked me.callParent, which breaks ExtJS's parent-method
+    chain and broke PVE.dc.Config construction. Reworked to override the base
+    PVE.panel.Config.initComponent and append the Console Wall tab to me.items
+    for the Datacenter instance only, using a normal callParent().
+
+ -- Console Wall Plugin <noreply@example.com>  Fri, 24 Jul 2026 18:00:00 +0000
+
 pve-console-wall (1.0.1) stable; urgency=medium
 
   * Fix: register ExtJS widget aliases (widget.pveConsoleWall,

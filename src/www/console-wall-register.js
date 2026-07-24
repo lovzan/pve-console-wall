@@ -1,44 +1,46 @@
 /*
  * Proxmox Console Wall - Datacenter registration
  *
- * Injects the "Console Wall" item into the Datacenter navigation tree.
+ * Injects the "Console Wall" item into the Datacenter navigation.
  *
- * PVE.dc.Config builds its navigation from `me.items` inside initComponent and
- * then hands them to the PVE.panel.Config base class via callParent(). We wrap
- * initComponent so that, at the moment the base class is about to consume the
- * items, our tab has already been appended.
+ * PVE.dc.Config builds its list of sub-panels into `me.items` inside its
+ * initComponent and then hands them to the base class PVE.panel.Config via
+ * callParent(). We override PVE.panel.Config.initComponent (the base) and, for
+ * the Datacenter instance only, append our tab to `me.items` *before* the base
+ * consumes it. This uses a normal callParent() with no rebinding, so it is
+ * robust across PVE 7/8/9.
  *
  * Part of the pve-console-wall plugin. Distributed under AGPL-3.0.
  */
-/* global Ext, gettext */
+/* global Ext, PVE, gettext */
 
-Ext.define('PVE.consolewall.DcConfigOverride', {
-    override: 'PVE.dc.Config',
+Ext.define('PVE.consolewall.PanelConfigOverride', {
+    override: 'PVE.panel.Config',
 
     initComponent: function() {
         let me = this;
 
-        // Wrap callParent for this single invocation: PVE.dc.Config sets
-        // me.items just before calling its parent, so this is the right seam
-        // to append our entry without duplicating the base construction logic.
-        let realCallParent = me.callParent;
-        me.callParent = function(args) {
-            if (Ext.isArray(me.items)) {
-                let already = me.items.some((it) => it && it.itemId === 'consolewall');
-                if (!already) {
+        try {
+            // Only touch the Datacenter config panel, not node/guest/storage.
+            if (typeof PVE !== 'undefined' && PVE.dc && PVE.dc.Config &&
+                me instanceof PVE.dc.Config && Ext.isArray(me.items)) {
+
+                let exists = me.items.some((it) => it && it.itemId === 'consolewall');
+                if (!exists) {
                     me.items.push({
                         xtype: 'pveConsoleWall',
                         title: gettext('Console Wall'),
                         iconCls: 'fa fa-th',
                         itemId: 'consolewall',
-                        // Top-level entry, sibling of Summary/Nodes/Storage.
                     });
                 }
             }
-            me.callParent = realCallParent;
-            return realCallParent.call(me, args);
-        };
+        } catch (e) {
+            if (window.console) {
+                window.console.error('console-wall: menu injection failed', e);
+            }
+        }
 
-        me.callParent(arguments);
+        me.callParent();
     },
 });
