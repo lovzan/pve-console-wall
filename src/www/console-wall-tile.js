@@ -377,6 +377,28 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         });
     },
 
+    // Human-readable byte size. Function names/locations vary across PVE
+    // versions (Proxmox.Utils.format_size on 8/9, PVE.Utils.render_size on
+    // older builds), so probe and fall back to a local formatter.
+    fmtSize: function(bytes) {
+        bytes = bytes || 0;
+        if (typeof Proxmox !== 'undefined' && Proxmox.Utils &&
+            typeof Proxmox.Utils.format_size === 'function') {
+            return Proxmox.Utils.format_size(bytes);
+        }
+        if (typeof PVE !== 'undefined' && PVE.Utils &&
+            typeof PVE.Utils.render_size === 'function') {
+            return PVE.Utils.render_size(bytes);
+        }
+        let units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+        let i = 0;
+        while (bytes >= 1024 && i < units.length - 1) {
+            bytes /= 1024;
+            i++;
+        }
+        return (i === 0 ? bytes : bytes.toFixed(1)) + ' ' + units[i];
+    },
+
     updateMetrics: function(data) {
         let me = this;
         let prevStatus = (me.getVmResource() || {}).status;
@@ -402,9 +424,9 @@ Ext.define('PVE.consolewall.ConsoleTile', {
                 '<span class="pcw-metric"><i class="fa fa-microchip"></i> ' +
                     cpu.toFixed(0) + '% <small>' + cpus + ' cpu</small></span>' +
                 '<span class="pcw-metric"><i class="fa fa-memory"></i> ' +
-                    memPct.toFixed(0) + '% <small>' + PVE.Utils.render_size(mem) + '</small></span>' +
+                    memPct.toFixed(0) + '% <small>' + me.fmtSize(mem) + '</small></span>' +
                 '<span class="pcw-metric"><i class="fa fa-exchange"></i> ' +
-                    '&darr;' + PVE.Utils.render_size(netin) + ' &uarr;' + PVE.Utils.render_size(netout) + '</span>';
+                    '&darr;' + me.fmtSize(netin) + ' &uarr;' + me.fmtSize(netout) + '</span>';
         } else if (overlay) {
             overlay.style.display = 'none';
         }
@@ -529,7 +551,13 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         // Reuse Proxmox's own full console viewer window. Passing no console
         // capability object lets PVE pick its default viewer (noVNC).
         let consoleType = res.type === 'lxc' ? 'lxc' : 'kvm';
-        PVE.Utils.openDefaultConsoleWindow(undefined, consoleType, res.vmid, res.node, res.name);
+        if (typeof PVE !== 'undefined' && PVE.Utils &&
+            typeof PVE.Utils.openDefaultConsoleWindow === 'function') {
+            PVE.Utils.openDefaultConsoleWindow(undefined, consoleType, res.vmid, res.node, res.name);
+        } else {
+            // Fallback: open the same console page in a new window.
+            window.open(me.consoleUrl(), '_blank', 'toolbar=no,location=no,menubar=no');
+        }
     },
 
     // ---- config setters used by the wall ----------------------------------

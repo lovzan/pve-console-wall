@@ -1,3 +1,12 @@
+pve-console-wall (1.0.11) stable; urgency=medium
+
+  * Fix "PVE.Utils.render_size is not a function" on PVE 9 (the metrics overlay
+    crashed). Use Proxmox.Utils.format_size with fallbacks to PVE.Utils
+    .render_size and a local formatter. Also guard the fullscreen call
+    (PVE.Utils.openDefaultConsoleWindow) with a window.open fallback.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 15:00:00 +0000
+
 pve-console-wall (1.0.10) stable; urgency=medium
 
   * Remove drag-to-reorder (unreliable with console iframes). Reordering stays
