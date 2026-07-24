@@ -1,3 +1,11 @@
+pve-console-wall (1.0.6) stable; urgency=medium
+
+  * Save silently. All modifications are already auto-saved (debounced,
+    server-side per user); removed the "Layout saved" confirmation toasts so
+    there are no save-confirmation messages.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 00:00:00 +0000
+
 pve-console-wall (1.0.5) stable; urgency=medium
 
   * Console image now fits and centers in each tile. The embedded noVNC canvas

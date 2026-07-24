@@ -784,7 +784,7 @@ Ext.define('PVE.consolewall.ConsoleWall', {
                 config: Ext.encode(me.currentStateObject()),
             },
             success: function() {
-                Ext.toast(Ext.String.format(gettext('Layout {0} saved'), name));
+                // Saved silently: no confirmation message.
             },
             failure: function(response) {
                 // Fall back to browser storage if the backend module is absent.
@@ -799,9 +799,9 @@ Ext.define('PVE.consolewall.ConsoleWall', {
         store[name] = me.currentStateObject();
         try {
             localStorage.setItem('pcw-layouts', Ext.encode(store));
-            Ext.toast(Ext.String.format(gettext('Layout {0} saved (local)'), name));
+            // Saved silently: no confirmation message.
         } catch (e) {
-            Ext.Msg.alert(gettext('Error'), gettext('Could not save layout.'));
+            // storage unavailable; stay silent (autosave/localStorage best-effort)
         }
     },
 
