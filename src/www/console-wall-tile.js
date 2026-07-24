@@ -229,8 +229,29 @@ Ext.define('PVE.consolewall.ConsoleTile', {
             me.setConnectedState(true);
             me.applyReadonly();
             me.styleFrame(frame);
+            me.suppressFrameUnloadPrompt(frame);
         };
         frame.src = me.consoleUrl();
+    },
+
+    // Proxmox's noVNC console page registers a `beforeunload` handler that pops
+    // up the browser's "changes you made may not be saved" prompt on reload.
+    // The iframe is same-origin, so we neutralise it: a capturing listener runs
+    // before noVNC's and stops it, and we also clear any onbeforeunload prop.
+    suppressFrameUnloadPrompt: function(frame) {
+        try {
+            let w = frame.contentWindow;
+            if (!w) {
+                return;
+            }
+            w.onbeforeunload = null;
+            w.addEventListener('beforeunload', function(e) {
+                e.stopImmediatePropagation();
+                delete e.returnValue;
+            }, true);
+        } catch (e) {
+            // cross-origin/timing; non-fatal
+        }
     },
 
     // The console page is same-origin, so we inject CSS into it to scale the

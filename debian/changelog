@@ -1,3 +1,12 @@
+pve-console-wall (1.0.7) stable; urgency=medium
+
+  * Suppress the browser "changes you made may not be saved" (beforeunload)
+    prompt on reload. Proxmox's noVNC console page registers a beforeunload
+    handler; each console iframe is same-origin, so we neutralise it with a
+    capturing listener that stops noVNC's and clear onbeforeunload.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 01:00:00 +0000
+
 pve-console-wall (1.0.6) stable; urgency=medium
 
   * Save silently. All modifications are already auto-saved (debounced,
