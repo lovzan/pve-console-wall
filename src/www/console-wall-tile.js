@@ -247,11 +247,11 @@ Ext.define('PVE.consolewall.ConsoleTile', {
         }
     },
 
-    // The console page is same-origin. We make the noVNC canvas fill the whole
-    // tile with pure CSS (object-fit: cover): it always covers the tile's full
-    // width and height at any tile size -- no dependency on noVNC's own scaling
-    // and its async timing. Aspect ratio is preserved (slight crop). We also
-    // disable noVNC's Local Scaling so it doesn't fight the CSS, and hide the
+    // The console page is same-origin. We enable noVNC's *remote* resizing so
+    // the guest changes its own display resolution to match the tile: the
+    // console then fills the tile exactly, with no crop and no letterbox, and
+    // the mouse maps 1:1 (correct cursor). Guests that don't support display
+    // resize simply keep their resolution (noVNC centers it). We also hide the
     // noVNC control-bar chrome.
     styleFrame: function(frame) {
         let me = this;
@@ -270,29 +270,25 @@ Ext.define('PVE.consolewall.ConsoleTile', {
                     '#noVNC_container, #noVNC_screen {' +
                         ' position:relative !important;' +
                         ' width:100% !important; height:100% !important;' +
-                        ' background:#111418 !important; }' +
-                    // fill the tile completely, keep aspect ratio, crop overflow;
-                    // this adapts automatically to any tile width/height
-                    '#noVNC_canvas, canvas {' +
-                        ' position:absolute !important; inset:0 !important;' +
-                        ' width:100% !important; height:100% !important;' +
-                        ' max-width:none !important; max-height:none !important;' +
-                        ' object-fit:cover !important; object-position:center !important;' +
-                        ' transform:none !important; }' +
+                        ' background:#111418 !important;' +
+                        ' display:flex !important; align-items:center !important;' +
+                        ' justify-content:center !important; }' +
+                    // let noVNC own the canvas size (remote resize sets it to the
+                    // client area); just center it, no forced scaling
+                    '#noVNC_canvas, canvas { margin:auto !important; }' +
                     '#noVNC_control_bar_anchor, #noVNC_status,' +
                         ' #noVNC_hint_anchor, #noVNC_bell { display:none !important; }';
                 doc.head.appendChild(st);
             }
-            // Turn noVNC's own scaling off so it doesn't double-transform.
-            me.setNoVncResize(frame, 'off', 0);
+            // 'remote' == Remote Resizing: the guest resizes to fill the tile.
+            me.setNoVncResize(frame, 'remote', 0);
         } catch (e) {
             // cross-origin or timing; non-fatal
         }
     },
 
     // Drive noVNC's own "Scaling Mode" <select> (retried, since the settings UI
-    // is created asynchronously). We set it to 'off' so our CSS cover controls
-    // the sizing exclusively.
+    // is created asynchronously and the RFB object appears only after connect).
     setNoVncResize: function(frame, mode, attempt) {
         let me = this;
         if (me.destroyed_) {
@@ -302,14 +298,15 @@ Ext.define('PVE.consolewall.ConsoleTile', {
             let doc = frame.contentDocument;
             let win = frame.contentWindow;
             let sel = doc && doc.getElementById('noVNC_setting_resize');
-            if (sel && win && sel.value !== mode) {
+            if (sel && win) {
+                // Dispatch each attempt so noVNC re-applies once RFB connects.
                 sel.value = mode;
                 sel.dispatchEvent(new win.Event('change', { bubbles: true }));
             }
         } catch (e) {
             // ignore and retry
         }
-        if (attempt < 12) {
+        if (attempt < 16) {
             setTimeout(() => me.setNoVncResize(frame, mode, attempt + 1), 350);
         }
     },

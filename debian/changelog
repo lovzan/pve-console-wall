@@ -1,3 +1,13 @@
+pve-console-wall (1.0.14) stable; urgency=medium
+
+  * Use noVNC Remote Resizing (resize=remote) instead of CSS cover. The guest
+    resizes its own display to match the tile, so the console fills the tile
+    exactly with no crop, no letterbox, and 1:1 mouse mapping (fixes the offset
+    cursor and the zoomed/cropped image). Guests without display-resize support
+    keep their resolution and are centered.
+
+ -- Console Wall Plugin <noreply@example.com>  Sat, 25 Jul 2026 18:00:00 +0000
+
 pve-console-wall (1.0.13) stable; urgency=medium
 
   * Console now fills the whole tile (width and height). noVNC's Local Scaling
